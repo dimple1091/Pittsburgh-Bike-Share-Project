@@ -9,7 +9,7 @@ output: html_document
 
 ```{r}
 
-setwd("Users/Abdulaziz/Documents/Master/Data Mining/Project/")
+setwd("./Documents/Master/Data Mining/Project/Pittsburgh-Bike-Share-Project")
 
 ```
 
@@ -23,7 +23,6 @@ setwd("./data/")
 
 ```{r}
 library(lubridate)
-
 library(dplyr)
 
 
@@ -189,7 +188,18 @@ bike$FromStationId[which(is.na(bike$FromStationName))]
 ```{r}
 
 
-bike %>% select(TripId,FromStationId) %>% filter(FromStationId == 1001) 
+newBike <- bike %>% 
+  select(TripId,day, month, hour) %>% 
+  filter(day==1, month == 7) %>% 
+  group_by(hour) %>%
+  summarise(total = n())
+
+```
+
+
+```{r}
+
+
 
 ```
 
