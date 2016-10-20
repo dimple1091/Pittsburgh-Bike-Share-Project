@@ -198,6 +198,18 @@ newBike <- bike %>%
 
 
 ```{r}
+### Remove all NA values 
+
+bike <- na.omit(bike)
+
+
+```
+
+
+```{r}
+## Write a csv file "bike.csv"
+
+write.csv(bike, file = "./bike.csv", row.names = FALSE)
 
 
 
