@@ -206,14 +206,65 @@ bike <- na.omit(bike)
 ```
 
 
+
+
+```{r}
+
+weather <- read.csv("weather.csv")
+
+```
+
+
+
+```{r}
+
+weather$date <- strptime(weather$date, format="%Y-%m-%d")
+
+
+```
+
+```{r}
+
+# weather$DATE <- as.factor(weather$DATE$year + 1900)
+set_up_featuresDate <- function(df) {
+  df$day <-  as.factor(df$date$mday)
+  df$month <- as.factor(df$date$mon+1) ## starts from 0
+  df$year <- as.factor(df$date$year + 1900)
+  df
+}
+
+weather <- set_up_featuresDate(weather)
+
+
+```
+
+```{r}
+
+weather <- weather[,-1]
+
+```
+
+
+```{r}
+
+library(plyr)
+library(dplyr)
+
+# bike1 <- merge(weather, bike, by = c("day","month","year"))
+bike <- join(bike, weather,  by=c("day",'month','year'), type="inner")
+# semi_join(bike, weather)
+
+```
+
+
 ```{r}
 ## Write a csv file "bike.csv"
 
 write.csv(bike, file = "./bike.csv", row.names = FALSE)
 
 
-
 ```
+
 
 ```{r}
 
