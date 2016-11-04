@@ -222,7 +222,12 @@ bike <- na.omit(bike)
 
 ### Weather 
 
-weather <- read.csv("weather.csv")
+# weather <- read.csv("weather.csv")
+weather_holidays <- read.csv("weather_holiday.csv", stringsAsFactors = TRUE)
+weather_holidays$Day <- as.factor(weather_holidays$Day)
+weather_holidays$Month <- as.factor(weather_holidays$Month)
+weather_holidays$Year <- as.factor(weather_holidays$Year)
+weather_holidays$Holiday <- as.factor(weather_holidays$Holiday)
 
 ```
 
@@ -230,29 +235,29 @@ weather <- read.csv("weather.csv")
 
 ```{r}
 
-weather$date <- strptime(weather$date, format="%Y-%m-%d")
+# weather$date <- strptime(weather$date, format="%Y-%m-%d")
 
 
 ```
 
 ```{r}
 
-# weather$DATE <- as.factor(weather$DATE$year + 1900)
-set_up_featuresDate <- function(df) {
-  df$day <-  as.factor(df$date$mday)
-  df$month <- as.factor(df$date$mon+1) ## starts from 0
-  df$year <- as.factor(df$date$year + 1900)
-  df
-}
-
-weather <- set_up_featuresDate(weather)
+# # weather$DATE <- as.factor(weather$DATE$year + 1900)
+# set_up_featuresDate <- function(df) {
+#   df$day <-  as.factor(df$date$mday)
+#   df$month <- as.factor(df$date$mon+1) ## starts from 0
+#   df$year <- as.factor(df$date$year + 1900)
+#   df
+# }
+# 
+# weather <- set_up_featuresDate(weather)
 
 
 ```
 
 ```{r}
 
-weather <- weather[,-1]
+# weather <- weather[,-1]
 
 ```
 
@@ -263,7 +268,7 @@ library(plyr)
 library(dplyr)
 
 # bike1 <- merge(weather, bike, by = c("day","month","year"))
-bike <- join(bike, weather,  by=c("day",'month','year'), type="inner")
+bike1 <- join(bike, weather_holidays,  by=c("Day",'Month','Year'), type="inner")
 # semi_join(bike, weather)
 
 ```
@@ -277,6 +282,90 @@ write.csv(bike, file = "./bike.csv", row.names = FALSE)
 
 ```
 
+
+```{r}
+
+## Calcuate the counts
+# by Hour, Day, Month, Year
+starttime <- bike[,c(11,12,14,15)]
+stoptime <- bike[,c(16,17,19,20)]
+
+
+```
+
+```{r}
+## Calcuate the frequencies
+
+starttime <- count(starttime, c('StartHour','StartDay','StartMonth','StartYear'))
+stoptime <- count(stoptime,  c('StopHour','StopDay','StopMonth','StopYear'))
+
+```
+
+```{r}
+
+## Aggregation
+aggregate_starttime <- aggregate(freq ~ StartDay + StartMonth + StartYear, data = starttime, sum)
+
+aggregate_stoptime <- aggregate(freq ~ StopDay + StopMonth + StopYear, data = stoptime, sum)
+
+
+```
+
+```{r}
+## Get the weather and holidays
+holiday <- weather_holidays[, c('Day','Month','Year','Holiday')]
+```
+
+```{r}
+## Merging them by 
+starttime_holiday <- merge(starttime, holiday, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+
+stoptime_holiday <- merge(stoptime, holiday, by.x = c('StopDay','StopMonth','StopYear'), by.y = c('Day','Month','Year'))
+
+```
+```{r}
+
+### Split them based on holiday
+starttime_holiday_split <- split(starttime_holiday, starttime_holiday$Holiday)
+
+starttime_holiday_no <- starttime_holiday_split[[1]]
+starttime_holiday_yes <- starttime_holiday_split[[2]]
+
+stoptime_holiday_split <- split(stoptime_holiday, stoptime_holiday$Holiday)
+
+stoptime_holiday_no <- stoptime_holiday_split[[1]]
+stoptime_holiday_yes <- stoptime_holiday_split[[2]]
+
+```
+
+```{r}
+### aggregating with hour
+starttime_holiday_yes_hour <- aggregate(freq ~ StartHour , data = starttime_holiday_yes, sum)
+starttime_holiday_no_hour <- aggregate(freq ~ StartHour, data = starttime_holiday_no, sum)
+
+stoptime_holiday_yes_hour <- aggregate(freq ~ StopHour, data = stoptime_holiday_yes, sum)
+stoptime_holiday_no_hour <- aggregate(freq ~ StopHour, data = stoptime_holiday_no, sum)
+
+```
+
+```{r}
+
+## Merging 
+
+startstoptime_DMY <- merge(aggregate_starttime,aggregate_stoptime, by.x = c("StartDay","StartMonth","StartYear"), by.y = c("StopDay","StopMonth","StopYear"))
+
+startstop_holiday_yes_hour <- merge(starttime_holiday_yes_hour, stoptime_holiday_yes_hour, by.x = "StartHour", by.y = "StopHour")
+
+startstop_holiday_no_hour <- merge(starttime_holiday_no_hour, stoptime_holiday_no_hour, by.x = "StartHour", by.y = "StopHour")
+```
+
+```{r}
+## Renaming 
+startstoptime_DMY <- rename(startstoptime_DMY, c("freq.x"="In", "freq.y"="Out"))
+startstop_holiday_yes_hour <- rename(startstop_holiday_yes_hour,  c("freq.x"="In", "freq.y"="Out"))
+startstop_holiday_no_hour <- rename(startstop_holiday_no_hour,  c("freq.x"="In", "freq.y"="Out"))
+
+```
 
 ```{r}
 

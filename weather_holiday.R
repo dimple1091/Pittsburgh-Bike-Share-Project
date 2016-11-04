@@ -31,6 +31,7 @@ weather$Types <- as.factor(weather$Types)
 
 
 weather$Holiday <- ifelse((weather$date %in% holidays$date) | (weather$Weekend == 'yes'),1,0)
-
+weather$Holiday <- as.factor(weather$Holiday)
 weather_holidays <- weather[-1]
+
 write.csv(weather_holidays, file = "weather_holiday.csv", row.names = FALSE)
