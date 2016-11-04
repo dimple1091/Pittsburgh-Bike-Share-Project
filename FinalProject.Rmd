@@ -149,12 +149,22 @@ bike$ToStationId <- as.factor(bike$ToStationId)
 
 
 set_up_features <- function(df) {
+  ### Start Time 
   df$StartTime <- strptime(df$StartTime, format="%Y-%m-%d %H:%M:%S")
-  df$hour <- as.factor(df$StartTime$hour)
-  df$day <-  as.factor(df$StartTime$mday)
-  df$wday <- as.factor(df$StartTime$wday)
-  df$month <- as.factor(df$StartTime$mon+1) ## starts from 0
-  df$year <- as.factor(df$StartTime$year + 1900)
+  df$StartHour <- as.factor(df$StartTime$hour)
+  df$StartDay <-  as.factor(df$StartTime$mday)
+  df$StartWday <- as.factor(df$StartTime$wday)
+  df$StartMonth <- as.factor(df$StartTime$mon+1) ## starts from 0
+  df$StartYear <- as.factor(df$StartTime$year + 1900)
+  
+  ### Stop Time
+  df$StopTime <- strptime(df$StopTime, format="%Y-%m-%d %H:%M:%S")
+  df$StopHour <- as.factor(df$StopTime$hour)
+  df$StopDay <-  as.factor(df$StopTime$mday)
+  df$StopWday <- as.factor(df$StopTime$wday)
+  df$StopMonth <- as.factor(df$StopTime$mon+1) ## starts from 0
+  df$StopYear <- as.factor(df$StopTime$year + 1900)
+  
   df
 }
 
@@ -188,11 +198,11 @@ bike$FromStationId[which(is.na(bike$FromStationName))]
 ```{r}
 
 
-newBike <- bike %>% 
-  select(TripId,day, month, hour) %>% 
-  filter(day==1, month == 7) %>% 
-  group_by(hour) %>%
-  summarise(total = n())
+# newBike <- bike %>% 
+#   select(TripId,day, month, hour) %>% 
+#   filter(day==1, month == 7) %>% 
+#   group_by(hour) %>%
+#   summarise(total = n())
 
 ```
 
@@ -209,6 +219,8 @@ bike <- na.omit(bike)
 
 
 ```{r}
+
+### Weather 
 
 weather <- read.csv("weather.csv")
 
