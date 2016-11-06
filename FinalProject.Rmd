@@ -268,7 +268,7 @@ library(plyr)
 library(dplyr)
 
 # bike1 <- merge(weather, bike, by = c("day","month","year"))
-bike1 <- join(bike, weather_holidays,  by=c("Day",'Month','Year'), type="inner")
+# bike1 <- join(bike, weather_holidays,  by=c("Day",'Month','Year'), type="inner")
 # semi_join(bike, weather)
 
 ```
