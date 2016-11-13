@@ -24,6 +24,7 @@ setwd("./data/")
 ```{r}
 library(lubridate)
 library(dplyr)
+library(ggplot2)
 
 
 ```
@@ -74,8 +75,6 @@ rentalQ153$StopTime <- strptime(rentalQ153$StopTime, format="%m/%d/%Y %H:%M")
 # }
 
 rentalQ154 <- read.csv("HealthyRideRentals 2015 Q4.csv", na.strings= c("999", "NA", " ", ""))  
-
-
 rentalQ154$StartTime <- strptime(rentalQ154$StartTime, format="%Y-%m-%d %H:%M:%S")
 rentalQ154$StopTime <- strptime(rentalQ154$StopTime, format="%Y-%m-%d %H:%M:%S")
 
@@ -192,20 +191,11 @@ bike$FromStationId[which(is.na(bike$FromStationName))]
 ## I guss we should just drop them
 
 ```
+```{R}
 
-
-
-```{r}
-
-
-# newBike <- bike %>% 
-#   select(TripId,day, month, hour) %>% 
-#   filter(day==1, month == 7) %>% 
-#   group_by(hour) %>%
-#   summarise(total = n())
+# detach("package:plyr", unload=TRUE) 
 
 ```
-
 
 ```{r}
 ### Remove all NA values 
@@ -215,30 +205,31 @@ bike <- na.omit(bike)
 
 ```
 
-
-
-
 ```{r}
+## Remove the station "Transit" and "Healthy Ride Hub"
 
-### Weather 
+## 687
+ bike %>% 
+  select(TripId, FromStationId) %>% 
+    filter(FromStationId %in% c(1050,1051)) %>% 
+      summarise(n())
 
-# weather <- read.csv("weather.csv")
-weather_holidays <- read.csv("weather_holiday.csv", stringsAsFactors = TRUE)
-weather_holidays$Day <- as.factor(weather_holidays$Day)
-weather_holidays$Month <- as.factor(weather_holidays$Month)
-weather_holidays$Year <- as.factor(weather_holidays$Year)
-weather_holidays$Holiday <- as.factor(weather_holidays$Holiday)
+## 790
+bike %>%
+    select(TripId, ToStationId) %>%
+    filter(ToStationId %in% c(1050,1051)) %>%
+    summarise(n())
+
 
 ```
 
-
-
 ```{r}
 
-# weather$date <- strptime(weather$date, format="%Y-%m-%d")
-
+### Drop these values 
+ bike <- bike[!bike$FromStationId %in% c(1050,1051) & !bike$ToStationId %in% c(1050,1051),]
 
 ```
+
 
 ```{r}
 
@@ -264,8 +255,6 @@ weather_holidays$Holiday <- as.factor(weather_holidays$Holiday)
 
 ```{r}
 
-library(plyr)
-library(dplyr)
 
 # bike1 <- merge(weather, bike, by = c("day","month","year"))
 # bike1 <- join(bike, weather_holidays,  by=c("Day",'Month','Year'), type="inner")
@@ -294,26 +283,59 @@ stoptime <- bike[,c(16,17,19,20)]
 ```
 
 ```{r}
-## Calcuate the frequencies
+## Calcuate the counts
 
-starttime <- count(starttime, c('StartHour','StartDay','StartMonth','StartYear'))
-stoptime <- count(stoptime,  c('StopHour','StopDay','StopMonth','StopYear'))
+# starttime <- count_(starttime, c('StartHour','StartDay','StartMonth','StartYear'))
+# 
+# stoptime <- count_(stoptime,  c('StopHour','StopDay','StopMonth','StopYear'))
 
+starttime <- starttime %>% count(StartHour,StartDay, StartMonth, StartYear)
+stoptime <- stoptime %>% count(StopHour, StopDay, StopMonth, StopYear)
 ```
 
 ```{r}
 
 ## Aggregation
-aggregate_starttime <- aggregate(freq ~ StartDay + StartMonth + StartYear, data = starttime, sum)
+# aggregate_starttime1 <- aggregate(freq ~ StartDay + StartMonth + StartYear, data = starttime, sum)
+# aggregate_stoptime1 <- aggregate(freq ~ StopDay + StopMonth + StopYear, data = stoptime, sum)
 
-aggregate_stoptime <- aggregate(freq ~ StopDay + StopMonth + StopYear, data = stoptime, sum)
+aggregate_starttime <- starttime %>% 
+  group_by(StartDay,StartMonth,StartYear) %>% 
+  summarise_each(funs(sum), n) %>% 
+  arrange(StartYear,StartMonth)
 
+aggregate_stoptime <- stoptime %>%
+  group_by(StopDay, StopMonth, StopYear) %>%
+  summarise_each(funs(sum), n) %>%
+  arrange(StopYear, StopMonth)
+
+```
+
+
+```{r}
+
+library(plyr)
+
+### Weather 
+
+### Holiday column 1 means it is either a holiday or a weekend 
+### Weekend 1 = yes , 0 = no
+## Types 1 = Sunny, 2 = Rain, 3 = Snow
+
+# weather <- read.csv("weather.csv")
+weather_holidays <- read.csv("weather_holiday.csv", stringsAsFactors = TRUE)
+weather_holidays$Day <- as.factor(weather_holidays$Day)
+weather_holidays$Month <- as.factor(weather_holidays$Month)
+weather_holidays$Year <- as.factor(weather_holidays$Year)
+weather_holidays$Holiday <- as.factor(weather_holidays$Holiday)
+weather_holidays$Weekend <- mapvalues(weather_holidays$Weekend, from = c('yes','no'), to = c(1,0))
+weather_holidays$Types <- mapvalues(weather_holidays$Types, from = c('Sunny','Rain','Snow'), to = c(1,2,3))
 
 ```
 
 ```{r}
 ## Get the weather and holidays
-holiday <- weather_holidays[, c('Day','Month','Year','Holiday')]
+holiday <- weather_holidays[, c('Day','Month','Year','Weekend','Holiday')]
 ```
 
 ```{r}
@@ -323,9 +345,25 @@ starttime_holiday <- merge(starttime, holiday, by.x = c('StartDay','StartMonth',
 stoptime_holiday <- merge(stoptime, holiday, by.x = c('StopDay','StopMonth','StopYear'), by.y = c('Day','Month','Year'))
 
 ```
+
+```{r}
+### Grouping by day to make useful viusalization 
+
+aggregate_starttime_day_weatherHoliday <- merge(aggregate_starttime, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+
+aggregate_starttime_day_weatherHoliday <- aggregate_starttime_day_weatherHoliday %>% arrange(StartYear,StartMonth,StartDay)
+
+aggregate_starttime_day_weatherHoliday$Types <- as.integer(aggregate_starttime_day_weatherHoliday$Types)
+aggregate_starttime_day_weatherHoliday$Weekend <- as.integer(aggregate_starttime_day_weatherHoliday$Weekend)
+aggregate_starttime_day_weatherHoliday$Holiday <- as.integer(aggregate_starttime_day_weatherHoliday$Holiday)
+
+```
+
+
 ```{r}
 
-### Split them based on holiday
+
+### Split them based on the holiday holiday
 starttime_holiday_split <- split(starttime_holiday, starttime_holiday$Holiday)
 
 starttime_holiday_no <- starttime_holiday_split[[1]]
@@ -340,11 +378,11 @@ stoptime_holiday_yes <- stoptime_holiday_split[[2]]
 
 ```{r}
 ### aggregating with hour
-starttime_holiday_yes_hour <- aggregate(freq ~ StartHour , data = starttime_holiday_yes, sum)
-starttime_holiday_no_hour <- aggregate(freq ~ StartHour, data = starttime_holiday_no, sum)
+starttime_holiday_yes_hour <- aggregate(n ~ StartHour , data = starttime_holiday_yes, sum)
+starttime_holiday_no_hour <- aggregate(n ~ StartHour, data = starttime_holiday_no, sum)
 
-stoptime_holiday_yes_hour <- aggregate(freq ~ StopHour, data = stoptime_holiday_yes, sum)
-stoptime_holiday_no_hour <- aggregate(freq ~ StopHour, data = stoptime_holiday_no, sum)
+stoptime_holiday_yes_hour <- aggregate(n ~ StopHour, data = stoptime_holiday_yes, sum)
+stoptime_holiday_no_hour <- aggregate(n ~ StopHour, data = stoptime_holiday_no, sum)
 
 ```
 
@@ -360,14 +398,56 @@ startstop_holiday_no_hour <- merge(starttime_holiday_no_hour, stoptime_holiday_n
 ```
 
 ```{r}
+
+
 ## Renaming 
-startstoptime_DMY <- rename(startstoptime_DMY, c("freq.x"="In", "freq.y"="Out"))
-startstop_holiday_yes_hour <- rename(startstop_holiday_yes_hour,  c("freq.x"="In", "freq.y"="Out"))
-startstop_holiday_no_hour <- rename(startstop_holiday_no_hour,  c("freq.x"="In", "freq.y"="Out"))
+startstoptime_DMY <- rename(startstoptime_DMY, c("n.x"="Out", "n.y"="In"))
+startstop_holiday_yes_hour <- rename(startstop_holiday_yes_hour,  c("n.x"="Out", "n.y"="In"))
+startstop_holiday_no_hour <- rename(startstop_holiday_no_hour,  c("n.x"="Out", "n.y"="In"))
 
 ```
+
+```{r}
+## Graphs
+
+
+ggplot(aggregate_starttime, aes(x=n , fill = as.factor(StartYear))) + geom_density()
+ggplot(aggregate_starttime, aes(x=log(n) , fill = as.factor(StartMonth))) + geom_density()
+ggplot(aggregate_starttime, aes(x=n , fill = as.factor(StartDay))) + geom_density()
+
+## based on weather types
+ggplot(aggregate_starttime_day_weatherHoliday, aes(x=n, fill = as.factor(Types))) + geom_density()
+ggplot(aggregate_starttime_day_weatherHoliday, aes(x=n, fill = as.factor(Holiday))) + geom_density()
+
+### Histogram
+
+par(mfrow=c(4,2))
+par(mar = rep(2, 4))
+hist(aggregate_starttime_day_weatherHoliday$Types)
+hist(aggregate_starttime_day_weatherHoliday$Weekend)
+hist(aggregate_starttime_day_weatherHoliday$Holiday)
+hist(aggregate_starttime_day_weatherHoliday$Mean.Temp)
+hist(aggregate_starttime_day_weatherHoliday$Mean.Wind)
+hist(aggregate_starttime_day_weatherHoliday$Mean.Visib)
+hist(aggregate_starttime_day_weatherHoliday$Mean.Visib)
+
+
+# ggplot(starttime_holiday, aes(x=StartHour, y=n, color = Holiday)) + geom_point()
+# 
+# ggplot(starttime_holiday, aes(x=StartMonth, y=n)) + geom_point()
+# 
+# ggplot(starttime_holiday, aes(x=StartMonth)) + geom_line(aes(y= n, color = 'red'))
+
+
+
+```
+
+
 
 ```{r}
 
 ### References
 # https://github.com/artem-fedosov/bike-sharing-demand/blob/master/read_data.R
+# https://www.analyticsvidhya.com/blog/2015/06/solution-kaggle-competition-bike-sharing-demand/
+
+```
