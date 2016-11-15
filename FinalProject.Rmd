@@ -191,9 +191,10 @@ bike$FromStationId[which(is.na(bike$FromStationName))]
 ## I guss we should just drop them
 
 ```
+
 ```{R}
 
-# detach("package:plyr", unload=TRUE) 
+detach("package:plyr", unload=TRUE) 
 
 ```
 
@@ -276,8 +277,9 @@ write.csv(bike, file = "./bike.csv", row.names = FALSE)
 
 ## Calcuate the counts
 # by Hour, Day, Month, Year
-starttime <- bike[,c(11,12,14,15)]
-stoptime <- bike[,c(16,17,19,20)]
+# inclue the From station Id
+starttime <- bike[,c(6,11,12,14,15)]
+stoptime <- bike[,c(6,16,17,19,20)]
 
 
 ```
@@ -289,23 +291,22 @@ stoptime <- bike[,c(16,17,19,20)]
 # 
 # stoptime <- count_(stoptime,  c('StopHour','StopDay','StopMonth','StopYear'))
 
-starttime <- starttime %>% count(StartHour,StartDay, StartMonth, StartYear)
-stoptime <- stoptime %>% count(StopHour, StopDay, StopMonth, StopYear)
+starttime <- starttime %>% count(FromStationId, StartHour,StartDay, StartMonth, StartYear)
+stoptime <- stoptime %>% count(FromStationId, StopHour, StopDay, StopMonth, StopYear)
 ```
 
 ```{r}
 
-## Aggregation
-# aggregate_starttime1 <- aggregate(freq ~ StartDay + StartMonth + StartYear, data = starttime, sum)
-# aggregate_stoptime1 <- aggregate(freq ~ StopDay + StopMonth + StopYear, data = stoptime, sum)
+## Aggregation for Hour and From Station Id
+
 
 aggregate_starttime <- starttime %>% 
-  group_by(StartDay,StartMonth,StartYear) %>% 
+  group_by(FromStationId,StartHour,StartDay,StartMonth,StartYear) %>% 
   summarise_each(funs(sum), n) %>% 
-  arrange(StartYear,StartMonth)
+  arrange(desc(n))
 
 aggregate_stoptime <- stoptime %>%
-  group_by(StopDay, StopMonth, StopYear) %>%
+  group_by(FromStationId,StopHour, StopDay, StopMonth, StopYear) %>%
   summarise_each(funs(sum), n) %>%
   arrange(StopYear, StopMonth)
 
@@ -334,6 +335,23 @@ weather_holidays$Types <- mapvalues(weather_holidays$Types, from = c('Sunny','Ra
 ```
 
 ```{r}
+
+### Merge the aggregate_starttime with the holdiay and the weather 
+
+bike_final <-merge(aggregate_starttime, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+
+```
+
+
+
+```{r}
+
+##### The next section is just for data exploration  #################
+
+```
+
+
+```{r}
 ## Get the weather and holidays
 holiday <- weather_holidays[, c('Day','Month','Year','Weekend','Holiday')]
 ```
@@ -356,6 +374,8 @@ aggregate_starttime_day_weatherHoliday <- aggregate_starttime_day_weatherHoliday
 aggregate_starttime_day_weatherHoliday$Types <- as.integer(aggregate_starttime_day_weatherHoliday$Types)
 aggregate_starttime_day_weatherHoliday$Weekend <- as.integer(aggregate_starttime_day_weatherHoliday$Weekend)
 aggregate_starttime_day_weatherHoliday$Holiday <- as.integer(aggregate_starttime_day_weatherHoliday$Holiday)
+
+View(aggregate_starttime_day_weatherHoliday)
 
 ```
 
