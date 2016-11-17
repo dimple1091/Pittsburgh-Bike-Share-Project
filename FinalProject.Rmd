@@ -9,7 +9,7 @@ output: html_document
 
 ```{r}
 
-setwd("./Documents/Master/Data Mining/Project/Pittsburgh-Bike-Share-Project")
+setwd("./Documents/Master/Data Mining/Project/Pittsburgh-Bike-Share-Project/")
 
 ```
 
@@ -279,7 +279,7 @@ write.csv(bike, file = "./bike.csv", row.names = FALSE)
 # by Hour, Day, Month, Year
 # inclue the From station Id
 starttime <- bike[,c(6,11,12,14,15)]
-stoptime <- bike[,c(6,16,17,19,20)]
+stoptime <- bike[,c(8,16,17,19,20)]
 
 
 ```
@@ -288,27 +288,43 @@ stoptime <- bike[,c(6,16,17,19,20)]
 ## Calcuate the counts
 
 # starttime <- count_(starttime, c('StartHour','StartDay','StartMonth','StartYear'))
-# 
 # stoptime <- count_(stoptime,  c('StopHour','StopDay','StopMonth','StopYear'))
 
 starttime <- starttime %>% count(FromStationId, StartHour,StartDay, StartMonth, StartYear)
-stoptime <- stoptime %>% count(FromStationId, StopHour, StopDay, StopMonth, StopYear)
+stoptime <- stoptime %>% count(ToStationId, StopHour, StopDay, StopMonth, StopYear)
 ```
 
 ```{r}
 
-## Aggregation for Hour and From Station Id
+## Aggregation for Hour and FromStationId and ToStationid
 
 
-aggregate_starttime <- starttime %>% 
+aggregate_starttime_hour <- starttime %>% 
   group_by(FromStationId,StartHour,StartDay,StartMonth,StartYear) %>% 
   summarise_each(funs(sum), n) %>% 
   arrange(desc(n))
 
-aggregate_stoptime <- stoptime %>%
-  group_by(FromStationId,StopHour, StopDay, StopMonth, StopYear) %>%
+aggregate_stoptime_hour <- stoptime %>%
+  group_by(ToStationId,StopHour, StopDay, StopMonth, StopYear) %>%
   summarise_each(funs(sum), n) %>%
   arrange(StopYear, StopMonth)
+
+```
+
+```{r}
+## Aggregation per day and FromStationId and ToStationid
+## used for classification
+
+aggregate_starttime_day <- starttime %>% 
+  group_by(FromStationId,StartDay,StartMonth,StartYear) %>% 
+  summarise_each(funs(sum), n) %>% 
+  arrange(StartYear, StartMonth)
+
+aggregate_stoptime_day <- stoptime %>%
+  group_by(ToStationId,StopDay, StopMonth, StopYear) %>%
+  summarise_each(funs(sum), n) %>%
+  arrange(StopYear, StopMonth)
+
 
 ```
 
@@ -336,16 +352,40 @@ weather_holidays$Types <- mapvalues(weather_holidays$Types, from = c('Sunny','Ra
 
 ```{r}
 
-### Merge the aggregate_starttime with the holdiay and the weather 
+### Merge the aggregate_starttime_hour with the holdiay and the weather 
+### This is just used for the prediction 
 
-bike_final <-merge(aggregate_starttime, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+bike_final <-merge(aggregate_starttime_hour, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+
+```
+
+```{r}
+
+## For classification we need two separete files to find out the unbalance problem 
+
+bike_starttime <- merge(aggregate_starttime_day, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
+bike_starttime <- arrange(bike_starttime, StartYear, StartMonth, StartDay)
+
+
+bike_stoptime <- merge(aggregate_stoptime_day, weather_holidays, by.x = c('StopDay','StopMonth','StopYear'), by.y = c('Day','Month','Year'))
+bike_stoptime <- arrange(bike_stoptime, StopYear, StopMonth, StopDay)
+
+
+```
+
+```{r}
+
+write.csv(bike_final, file = "./bike_final.csv", row.names = FALSE)
+write.csv(bike_starttime, file = "./bike_starttime.csv", row.names = FALSE)
+write.csv(bike_stoptime, file = "./bike_stoptime.csv", row.names = FALSE)
+
 
 ```
 
 
 
 ```{r}
-
+####################### Warning ####################################
 ##### The next section is just for data exploration  #################
 
 ```
