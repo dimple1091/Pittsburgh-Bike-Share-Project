@@ -9,7 +9,7 @@ output: html_document
 
 ```{r}
 
-setwd("./Documents/Master/Data Mining/Project/Pittsburgh-Bike-Share-Project/")
+setwd("./Users/Dimple/Documents/Master/Data Mining/project/Pittsburgh-Bike-Share-Project")
 
 ```
 
@@ -33,7 +33,7 @@ library(ggplot2)
 ## Read The data
 ### stations data
 stations <- read.csv("HealthyRideStations2015.csv")
-
+View(stations)
 ```
 
 ```{r}
@@ -209,17 +209,17 @@ bike <- na.omit(bike)
 ```{r}
 ## Remove the station "Transit" and "Healthy Ride Hub"
 
-## 687
- bike %>% 
-  select(TripId, FromStationId) %>% 
-    filter(FromStationId %in% c(1050,1051)) %>% 
-      summarise(n())
-
-## 790
-bike %>%
-    select(TripId, ToStationId) %>%
-    filter(ToStationId %in% c(1050,1051)) %>%
-    summarise(n())
+# ## 687
+#  bike %>% 
+#   select(TripId, FromStationId) %>% 
+#     filter(FromStationId %in% c(1050,1051)) %>% 
+#       summarise(n())
+# 
+# ## 790
+# bike %>%
+#     select(TripId, ToStationId) %>%
+#     filter(ToStationId %in% c(1050,1051)) %>%
+#     summarise(n())
 
 
 ```
@@ -366,11 +366,20 @@ bike_final <-merge(aggregate_starttime_hour, weather_holidays, by.x = c('StartDa
 bike_starttime <- merge(aggregate_starttime_day, weather_holidays, by.x = c('StartDay','StartMonth','StartYear'), by.y = c('Day','Month','Year'))
 bike_starttime <- arrange(bike_starttime, StartYear, StartMonth, StartDay)
 
+View(bike_starttime)
 
 bike_stoptime <- merge(aggregate_stoptime_day, weather_holidays, by.x = c('StopDay','StopMonth','StopYear'), by.y = c('Day','Month','Year'))
 bike_stoptime <- arrange(bike_stoptime, StopYear, StopMonth, StopDay)
+View(bike_stoptime)
 
 
+bikeTest<-merge(bike_starttime, stations, by.x = "FromStationId", by.y = "StationNum")
+View(bikeTest)
+bike_starttime$diff <- bike_starttime$n- bike_stoptime$n
+bikeTest$rentedBikes<- bikeTest$diff/bikeTest$RackQnty
+bikeTest$rentedBikes[bikeTest$rentedBikes!=0]=1
+
+View(bikeTest)
 ```
 
 ```{r}
@@ -458,6 +467,35 @@ startstop_holiday_no_hour <- merge(starttime_holiday_no_hour, stoptime_holiday_n
 ```
 
 ```{r}
+View(bike)
+
+biketrain<-subset(bike_final,bike_final$StartDay %in% c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19))
+biketrain<-as.data.frame(biketrain)
+View(biketrain)
+
+as.data.frame(biketest1)
+
+biketest1<-subset(bike_final,bike_final$StartDay %in% c(20,21,22,23,24,25,26,27,28,29,30,31))
+View(biketest1)
+
+View(bike_final)
+
+
+biketest1<-biketest1[,-6]
+
+predict_bikes = lm(n~StartDay+StartMonth+StartYear+FromStationId+StartHour+Mean.Temp+Mena.Humidity+Mean.Visib+Mean.Wind+Types+Weekend+Holiday,data=biketrain)
+summary(predict_bikes)
+
+summary(biketrain$StartDay)
+bikeResult<- predict(predict_bikes,newdata = biketest1)
+table(bikeResult <0)
+
+
+
+
+
+
+```
 
 
 ## Renaming 
